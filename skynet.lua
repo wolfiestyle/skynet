@@ -3,8 +3,8 @@ local brain = require "brain"
 local lfs = require "lfs"
 
 local function parse_args()
-    local parser = require "argparse" "skynet"
-        :description "Command line utility for the skynet bot engine."
+    local parser = require "argparse" ()
+        :description "Command line utility for the Brain bot engine."
     parser:option "--db"
         :description "Brain database filename."
         :default "brain.db"
@@ -27,7 +27,7 @@ local function parse_args()
         :description "Text file to learn."
         :convert(io.open)
 
-    local cmd_stats = parser:command "stats"
+    --[[local cmd_stats = ]]parser:command "stats"
         :description "Prints database stats."
 
     local cmd_reply = parser:command "reply"
@@ -67,7 +67,7 @@ local function parse_args()
     tw_login:option "-s" "--consumer-secret"
         :description "Application consumer secret."
 
-    local tw_logout = cmd_twitter:command "logout"
+    --[[local tw_logout = ]]cmd_twitter:command "logout"
         :description "Deletes the auth info from the database."
 
     local tw_follow = cmd_twitter:command "follow"
@@ -99,13 +99,6 @@ local function decode_entities(str)
     return str:gsub("&(%a+);", entities)
 end
 
-function id_cmp(a, b)
-    if a == b then return 0 end
-    local dl = #a - #b
-    if dl ~= 0 then return dl > 0 and 1 or -1 end
-    return a > b and 1 or -1
-end
-
 local function learn_text(bot, file)
     bot:begin_batch()
     local n = 0
@@ -135,6 +128,7 @@ end
 local function learn_twitter(bot, file)
     local lpeg = require "lpeg"
     local tablex = require "pl.tablex"
+    local util = require "luatwit.util"
     local P, C, Cs, Ct  = lpeg.P, lpeg.C, lpeg.Cs, lpeg.Ct
 
     local qt   = P'"'
@@ -165,7 +159,7 @@ local function learn_twitter(bot, file)
     local last_tweet_id = tweet[cols.tweet_id]
     local stored_id = bot.db:get_config "last_tweet_id"
     bot:begin_batch()
-    if not stored_id or id_cmp(last_tweet_id, stored_id) > 0 then
+    if not stored_id or util.id_cmp(last_tweet_id, stored_id) > 0 then
         bot.db:set_config("last_tweet_id", last_tweet_id)
     end
 
@@ -202,7 +196,7 @@ local function load_keys(db)
         keys[name] = db:get_config(name)
     end
     if not keys.oauth_token then
-        perror "Error: Twitter keys not found.\nYou must login first with the 'skynet twitter login' command."
+        perror("Error: Twitter keys not found.\nYou must login first with the '", arg[0], " twitter login' command.")
         os.exit(1)
     end
     return keys
@@ -263,6 +257,7 @@ end
 
 local function twitter_connect(bot, interval, target_name, answer)
     local twitter = require "luatwit"
+    local util = require "luatwit.util"
     local client = twitter.api.new(load_keys(bot.db))
 
     perror "-- getting user info"
@@ -273,7 +268,7 @@ local function twitter_connect(bot, interval, target_name, answer)
         local target = assert(client:get_user{ screen_name = target_name })
         if not target.following then
             local name = target.screen_name
-            perror("Error: You're not following ", name, ".\nYou must follow the target user with 'skynet twitter follow ", name, "'")
+            perror("Error: You're not following ", name, ".\nYou must follow the target user with '", arg[0], " twitter follow ", name, "'")
             os.exit(1)
         end
         target_id = target.id_str
@@ -282,7 +277,7 @@ local function twitter_connect(bot, interval, target_name, answer)
 
     local reply_queue = {}
 
-    local function learn_tweet(tweet)
+    local function learn_tweet(tweet, do_answer)
         local not_rt = true
         if tweet.retweeted_status then
             tweet = tweet.retweeted_status
@@ -291,7 +286,7 @@ local function twitter_connect(bot, interval, target_name, answer)
         local user_id = tweet.user.id_str
         if user_id == self_id then return end   -- ignore own tweets
         local text = decode_entities(tweet.text)
-        if answer and not_rt and tweet.in_reply_to_user_id_str == self_id then
+        if do_answer and not_rt and tweet.in_reply_to_user_id_str == self_id then
             reply_queue[#reply_queue + 1] = { tweet, text }
         end
         if not target_id or user_id == target_id then
@@ -314,7 +309,7 @@ local function twitter_connect(bot, interval, target_name, answer)
         bot:begin_batch()
         for i = #tl, 1, -1 do
             local tweet = tl[i]
-            learn_tweet(tweet)
+            learn_tweet(tweet, false)
         end
         last_tweet_id = tl[1].id_str
         bot.db:set_config("last_tweet_id", last_tweet_id)
@@ -328,14 +323,14 @@ local function twitter_connect(bot, interval, target_name, answer)
     while stream:is_active() do
         local last_id
         for obj in stream:iter() do
-            if twitter.type(obj) == "tweet" then
-                learn_tweet(obj)
+            if util.type(obj) == "tweet" then
+                learn_tweet(obj, answer)
                 last_id = obj.id_str
             end
         end
         if last_id then
             last_tweet_id = last_id
-            bot.db:set_config("last_tweet_id", last_id)
+            bot.db:set_config("last_tweet_id", last_tweet_id)
         end
 
         if interval > 0 then
