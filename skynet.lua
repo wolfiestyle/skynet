@@ -317,9 +317,9 @@ local function twitter_connect(bot, tweet_interval, target_name, answer, awake_t
     local last_tweet_id = bot.db:get_config "last_tweet_id"
     local tl
     if target_id then
-        tl = assert(client:get_user_timeline{ user_id = target_id, since_id = last_tweet_id })
+        tl = assert(client:get_user_timeline{ user_id = target_id, since_id = last_tweet_id, count = 100 })
     else
-        tl = assert(client:get_home_timeline{ since_id = last_tweet_id, include_entities = false })
+        tl = assert(client:get_home_timeline{ since_id = last_tweet_id, count = 100, include_entities = false })
     end
 
     bot:set_filter "u@" -- remove url's and mentions
