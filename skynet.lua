@@ -55,8 +55,9 @@ local function parse_args()
     cmd_connect:option "-u" "--user"
         :description "Learn tweets only from the specified user."
         :argname "<screen_name>"
-    cmd_connect:option "-i" "--interval"
+    cmd_connect:option "-t" "--tweet-every"
         :description "Automatic tweet interval, in minutes."
+        :argname "<minutes>"
         :default "60"
         :convert(tonumber)
     cmd_connect:flag "-a" "--answer"
@@ -257,7 +258,7 @@ local function twitter_tweet(bot, text)
     assert(client:tweet{ status = reply })
 end
 
-local function twitter_connect(bot, interval, target_name, answer)
+local function twitter_connect(bot, tweet_interval, target_name, answer)
     local twitter = require "luatwit"
     local util = require "luatwit.util"
     local client = twitter.api.new(load_keys(bot.db))
@@ -335,9 +336,9 @@ local function twitter_connect(bot, interval, target_name, answer)
             bot.db:set_config("last_tweet_id", last_tweet_id)
         end
 
-        if interval > 0 then
+        if tweet_interval > 0 then
             local cur_time = os.time()
-            if cur_time - last_tweet_time >= interval then
+            if cur_time - last_tweet_time >= tweet_interval then
                 last_tweet_time = cur_time
                 bot.db:set_config("last_tweet_time", last_tweet_time)
                 local text = bot:reply(nil, 140)
@@ -399,7 +400,7 @@ elseif args.tweet then
     local text = next(args.text) and table.concat(args.text, " ")
     twitter_tweet(bot, text)
 elseif args.connect then
-    twitter_connect(bot, args.interval * 60, args.user, args.answer)
+    twitter_connect(bot, args.tweet_every * 60, args.user, args.answer)
 elseif args.twitter then
     if args.login then
         twitter_login(bot, args.consumer_key, args.consumer_secret)
