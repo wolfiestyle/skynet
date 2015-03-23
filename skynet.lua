@@ -2,8 +2,10 @@
 local brain = require "brain"
 local lfs = require "lfs"
 
+local script_name = arg[0]:match "[^/]+$"
+
 local function parse_args()
-    local parser = require "argparse" ()
+    local parser = require "argparse" (script_name)
         :description "Command line utility for the Brain bot engine."
     parser:option "--db"
         :description "Brain database filename."
@@ -196,7 +198,7 @@ local function load_keys(db)
         keys[name] = db:get_config(name)
     end
     if not keys.oauth_token then
-        perror("Error: Twitter keys not found.\nYou must login first with the '", arg[0], " twitter login' command.")
+        perror("Error: Twitter keys not found.\nYou must login first with the '", script_name, " twitter login' command.")
         os.exit(1)
     end
     return keys
@@ -268,7 +270,7 @@ local function twitter_connect(bot, interval, target_name, answer)
         local target = assert(client:get_user{ screen_name = target_name })
         if not target.following then
             local name = target.screen_name
-            perror("Error: You're not following ", name, ".\nYou must follow the target user with '", arg[0], " twitter follow ", name, "'")
+            perror("Error: You're not following ", name, ".\nYou must follow the target user with '", script_name, " twitter follow ", name, "'")
             os.exit(1)
         end
         target_id = target.id_str
