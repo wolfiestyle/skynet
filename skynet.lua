@@ -117,6 +117,7 @@ local function hour_in_range(s, e)
     return (s <= e and t >= s and t < e) or (s > e and (t >= s or t < e))
 end
 
+-- skynet learn <file>
 local function learn_text(bot, file)
     bot:begin_batch()
     local n = 0
@@ -128,6 +129,7 @@ local function learn_text(bot, file)
     perror("Learned ", n, " strings")
 end
 
+-- skynet learn --irc <file>
 local function learn_irc(bot, file)
     bot:set_filter "u" -- remove url's
     bot:begin_batch()
@@ -143,6 +145,7 @@ local function learn_irc(bot, file)
     perror("Learned ", n, " messages")
 end
 
+-- skynet learn --tweets <file>
 local function learn_twitter(bot, file)
     local lpeg = require "lpeg"
     local tablex = require "pl.tablex"
@@ -195,11 +198,13 @@ local function learn_twitter(bot, file)
     perror("Learned ", n, " tweets")
 end
 
+-- skynet reply [--limit <limit>] [text...]
 local function print_reply(bot, text, limit)
     math.randomseed(os.time())
     print(bot:reply(text, limit))
 end
 
+-- skynet stats
 local function print_stats(bot)
     local stats = bot.db:get_stats()
     print(string.format("markov order: %d\ntokens: %d\nstates: %d\ntransitions: %d",
@@ -229,6 +234,7 @@ local function save_keys(db, ckey, csecret, token)
     db:exec "COMMIT"
 end
 
+-- skynet twitter login [--consumer-key <ckey>] [--consumer-secret <csecret>]
 local function twitter_login(bot, ckey, csecret)
     local twitter = require "luatwit"
 
@@ -245,6 +251,7 @@ local function twitter_login(bot, ckey, csecret)
     perror("-- logged in as ", token.screen_name)
 end
 
+-- skynet twitter logout
 local function twitter_logout(bot)
     bot.db:exec "PRAGMA secure_delete = true"
     bot.db:exec "BEGIN"
@@ -254,6 +261,7 @@ local function twitter_logout(bot)
     bot.db:exec "COMMIT"
 end
 
+-- skynet twitter follow|unfollow <name>
 local function twitter_follow(bot, name, follow)
     local twitter = require "luatwit"
     local client = twitter.api.new(load_keys(bot.db))
@@ -264,6 +272,7 @@ local function twitter_follow(bot, name, follow)
     end
 end
 
+-- skynet tweet [text...]
 local function twitter_tweet(bot, text)
     local twitter = require "luatwit"
     local client = twitter.api.new(load_keys(bot.db))
@@ -273,6 +282,7 @@ local function twitter_tweet(bot, text)
     assert(client:tweet{ status = reply })
 end
 
+-- skynet connect [--user <target_name>] [--tweet-every <tweet_interval>] [--answer] [--awake-time <awake_time>] [--sleep-time <sleep_time>]
 local function twitter_connect(bot, tweet_interval, target_name, answer, awake_time, sleep_time)
     local twitter = require "luatwit"
     local util = require "luatwit.util"
