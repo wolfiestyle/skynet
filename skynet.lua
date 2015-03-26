@@ -348,7 +348,21 @@ local function twitter_connect(bot, tweet_interval, target_name, answer, awake_t
 
     perror "-- opening user stream"
     local stream = client:stream_user{ _async = 1, replies = target_id and "all" or nil }
-    while stream:is_active() do
+
+    while true do
+        local active, _, err, code = stream:is_active()
+        if not active then
+            if code then
+                perror("-- stream closed with status ", code, ": ", err)
+                if err ~= 503 then  -- Service Unavailable
+                    break
+                end
+            else
+                perror("-- stream closed with error: ", err)
+            end
+            return twitter_connect(bot, tweet_interval, target_name, answer, awake_time, sleep_time)
+        end
+
         local last_id
         for obj in stream:iter() do
             if util.type(obj) == "tweet" then
