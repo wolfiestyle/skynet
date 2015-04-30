@@ -402,7 +402,7 @@ local function twitter_connect(bot, tweet_interval, target_name, answer, awake_t
             end
         end
 
-        client.async:wait()
+        client.http:wait()
     end
 end
 

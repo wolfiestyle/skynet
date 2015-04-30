@@ -19,7 +19,7 @@ dependencies = {
     "argparse >= 0.3.2",
     "brain >= 0.1",
     "lpeg >= 0.12.2",
-    "luatwit >= 0.3.1",
+    "luatwit >= 0.3.2",
     "penlight >= 1.3.2",
 }
 
