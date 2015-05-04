@@ -49,9 +49,6 @@ local function parse_args()
 
     local cmd_connect = parser:command "connect"
         :description "Connects to a Twitter stream."
-
-    local cmd_twitter = parser:command "twitter"
-        :description "Twitter client configuration."
     cmd_connect:option "-u" "--user"
         :description "Learn tweets only from the specified user."
         :argname "<screen_name>"
@@ -72,6 +69,9 @@ local function parse_args()
         :convert(tonumber)
     cmd_connect:flag "-a" "--answer"
         :description "Answers to received replies."
+
+    local cmd_twitter = parser:command "twitter"
+        :description "Twitter client configuration."
 
     local tw_login = cmd_twitter:command "login"
         :description "Authorizes the client with Twitter."
