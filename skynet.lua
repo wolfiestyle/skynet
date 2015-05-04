@@ -4,6 +4,10 @@ local lfs = require "lfs"
 
 local script_name = arg[0]:match "[^/]+$"
 
+local function open_append(name)
+    return io.open(name, "a")
+end
+
 local function parse_args()
     local parser = require "argparse" (script_name)
         :description "Command line utility for the Brain bot engine."
@@ -17,7 +21,7 @@ local function parse_args()
         cmd_learn:flag "-t" "--tweets"
             :description "Parses input as a 'tweets.csv' file from Twitter.",
         cmd_learn:flag "-i" "--irc"
-            :description "Parses input as an IRC log."
+            :description "Parses input as an IRC log.",
     )
     cmd_learn:flag "-c" "--create"
         :description "Creates a new database file."
@@ -25,6 +29,10 @@ local function parse_args()
         :description "Markov order."
         :default "2"
         :convert(tonumber)
+    cmd_learn:option "-s" "--save"
+        :description "Save the learned strings in a text file."
+        :argname "<archive>"
+        :convert(open_append)
     cmd_learn:argument "input"
         :description "Text file to learn."
         :convert(io.open)
@@ -69,6 +77,10 @@ local function parse_args()
         :convert(tonumber)
     cmd_connect:flag "-a" "--answer"
         :description "Answers to received replies."
+    cmd_connect:option "-s" "--save"
+        :description "Save the learned tweets in a text file."
+        :argname "<archive>"
+        :convert(open_append)
 
     local cmd_twitter = parser:command "twitter"
         :description "Twitter client configuration."
@@ -117,12 +129,19 @@ local function hour_in_range(s, e)
     return (s <= e and t >= s and t < e) or (s > e and (t >= s or t < e))
 end
 
+local function write_archive(file, text, id)
+    if file then
+        file:write(id or "", ":", text, "\n")
+    end
+end
+
 -- skynet learn <file>
-local function learn_text(bot, file)
+local function learn_text(bot, file, out)
     bot:begin_batch()
     local n = 0
     for line in file:lines() do
         bot:learn(line)
+        write_archive(out, line)
         n = n + 1
     end
     bot:end_batch()
@@ -130,7 +149,7 @@ local function learn_text(bot, file)
 end
 
 -- skynet learn --irc <file>
-local function learn_irc(bot, file)
+local function learn_irc(bot, file, out)
     bot:set_filter "u" -- remove url's
     bot:begin_batch()
     local n = 0
@@ -138,6 +157,7 @@ local function learn_irc(bot, file)
         local text = line:match "<[^>]+>%s*(.*)"
         if text then
             bot:learn(text)
+            write_archive(out, text)
             n = n + 1
         end
     end
@@ -146,7 +166,7 @@ local function learn_irc(bot, file)
 end
 
 -- skynet learn --tweets <file>
-local function learn_twitter(bot, file)
+local function learn_twitter(bot, file, out)
     local lpeg = require "lpeg"
     local tablex = require "pl.tablex"
     local util = require "luatwit.util"
@@ -190,6 +210,7 @@ local function learn_twitter(bot, file)
         if row[cols.retweeted_status_id] == "" then   -- skip RTs
             local text = decode_entities(row[cols.text])
             bot:learn(text)
+            write_archive(out, text, row[cols.tweet_id])
             n = n + 1
         end
     end
@@ -424,11 +445,11 @@ local bot = brain.new(args.db, args.order)
 
 if args.learn then
     if args.tweets then
-        learn_twitter(bot, args.input)
+        learn_twitter(bot, args.input, args.save)
     elseif args.irc then
-        learn_irc(bot, args.input)
+        learn_irc(bot, args.input, args.save)
     else
-        learn_text(bot, args.input)
+        learn_text(bot, args.input, args.save)
     end
 elseif args.stats then
     print_stats(bot)
@@ -439,7 +460,7 @@ elseif args.tweet then
     local text = next(args.text) and table.concat(args.text, " ")
     twitter_tweet(bot, text)
 elseif args.connect then
-    twitter_connect(bot, args.tweet_every * 60, args.user, args.answer, args.awake_time, args.sleep_time)
+    twitter_connect(bot, args.tweet_every * 60, args.user, args.answer, args.awake_time, args.sleep_time, args.save)
 elseif args.twitter then
     if args.login then
         twitter_login(bot, args.consumer_key, args.consumer_secret)
