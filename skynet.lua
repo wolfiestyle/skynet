@@ -334,7 +334,7 @@ local function twitter_tweet(bot, text)
 end
 
 -- skynet connect [--user <target_name>] [--tweet-every <tweet_interval>] [--answer] [--awake-time <awake_time>] [--sleep-time <sleep_time>]
-local function twitter_connect(bot, tweet_interval, target_name, answer, awake_time, sleep_time)
+local function twitter_connect(bot, tweet_interval, target_name, answer, awake_time, sleep_time, out)
     local twitter = require "luatwit"
     local util = require "luatwit.util"
     local client = twitter.api.new(load_keys(bot.db))
@@ -371,6 +371,7 @@ local function twitter_connect(bot, tweet_interval, target_name, answer, awake_t
         if not target_id or user_id == target_id then
             print(string.format("<%s> %s", tweet.user.screen_name, text))
             bot:learn(text)
+            write_archive(out, text, tweet.id_str)
         end
     end
 
@@ -384,6 +385,7 @@ local function twitter_connect(bot, tweet_interval, target_name, answer, awake_t
     end
 
     bot:set_filter "u@" -- remove url's and mentions
+    out:setvbuf "line"
     if #tl > 0 then
         bot:begin_batch()
         for i = #tl, 1, -1 do
