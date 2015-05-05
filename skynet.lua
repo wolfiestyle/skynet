@@ -133,7 +133,7 @@ end
 
 local function write_archive(file, text, id)
     if file then
-        file:write(id or "", ":", text, "\n")
+        file:write(id or "", ":", text:gsub("\n", " "), "\n")
     end
 end
 
