@@ -22,6 +22,8 @@ local function parse_args()
             :description "Parses input as a 'tweets.csv' file from Twitter.",
         cmd_learn:flag "-i" "--irc"
             :description "Parses input as an IRC log.",
+        cmd_learn:flag "-a" "--archive"
+            :description "Parses input as an archive created by --save."
     )
     cmd_learn:flag "-c" "--create"
         :description "Creates a new database file."
@@ -217,6 +219,34 @@ local function learn_twitter(bot, file, out)
     bot:end_batch()
 
     perror("Learned ", n, " tweets")
+end
+
+-- skynet learn --archive <file>
+local function learn_archive(bot, file, out)
+    local util = require "luatwit.util"
+
+    bot:set_filter "u@"
+    bot:begin_batch()
+    local n = 0
+    local last_id = bot.db:get_config "last_tweet_id"
+    for line in file:lines() do
+        local id, text = line:match "(%d*):(.*)"
+        if id then
+            bot:learn(text)
+            write_archive(out, text, id)
+            n = n + 1
+            if id ~= "" then
+                if not last_id or util.id_cmp(id, last_id) > 0 then
+                    last_id = id
+                end
+            end
+        end
+    end
+    if last_id then
+        bot.db:set_config("last_tweet_id", last_id)
+    end
+    bot:end_batch()
+    perror("Learned ", n, " lines")
 end
 
 -- skynet reply [--limit <limit>] [text...]
@@ -448,6 +478,8 @@ if args.learn then
         learn_twitter(bot, args.input, args.save)
     elseif args.irc then
         learn_irc(bot, args.input, args.save)
+    elseif args.archive then
+        learn_archive(bot, args.input, args.save)
     else
         learn_text(bot, args.input, args.save)
     end
