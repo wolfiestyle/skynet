@@ -14,6 +14,9 @@ local function parse_args()
     parser:option "--db"
         :description "Brain database filename."
         :default "brain.db"
+    parser:option "--log"
+        :description "Log error messages to a file."
+        :convert(open_append)
 
     local cmd_learn = parser:command "learn"
         :description "Learns from the specified file."
@@ -110,9 +113,29 @@ local function parse_args()
     return parser:parse()
 end
 
+local function writeln(file, ...)
+    file:write(...)
+    file:write "\n"
+end
+
+local logfile
 local function perror(...)
-    io.stderr:write(...)
-    io.stderr:write "\n"
+    writeln(io.stderr, ...)
+    if logfile then
+        writeln(logfile, ...)
+    end
+end
+
+local function assert(res, err, ...)
+    if res ~= nil then
+        return res, err, ...
+    else
+        err = tostring(err)
+        if logfile then
+            writeln(logfile, "assert: ", debug.traceback(err, 2))
+        end
+        return error(err, 2)
+    end
 end
 
 local function ask(str)
@@ -462,6 +485,12 @@ local function twitter_connect(bot, tweet_interval, target_name, answer, awake_t
 end
 
 local args = parse_args()
+
+logfile = args.log
+if logfile then
+    logfile:setvbuf "line"
+end
+perror("-- started: ", os.date())
 
 if lfs.attributes(args.db) then
     if args.create then
