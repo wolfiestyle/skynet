@@ -385,7 +385,9 @@ local function twitter_connect(bot, tweet_interval, target_name, answer, awake_t
     end
 
     bot:set_filter "u@" -- remove url's and mentions
-    out:setvbuf "line"
+    if out then
+        out:setvbuf "line"
+    end
     if #tl > 0 then
         bot:begin_batch()
         for i = #tl, 1, -1 do
