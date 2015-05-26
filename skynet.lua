@@ -438,7 +438,7 @@ local function twitter_connect(bot, tweet_interval, target_name, answer, awake_t
             else
                 perror("-- stream closed with error: ", err)
             end
-            return twitter_connect(bot, tweet_interval, target_name, answer, awake_time, sleep_time)
+            return twitter_connect(bot, tweet_interval, target_name, answer, awake_time, sleep_time, out)
         end
 
         local last_id
